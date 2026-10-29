@@ -1,0 +1,6 @@
+{
+  "name": "청송 못난이 사과 축제 2026",
+  "description": "청송 못난이 사과 축제 2026 공식 웹사이트 - 수확 체험, 베이킹 클래스, 백자 빚기, 미니게임 및 통합 관리자 모드 제공",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
