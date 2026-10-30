@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Play, Plus, X, Youtube, Link as LinkIcon, AlertCircle, CheckCircle2, Film } from 'lucide-react';
 import { getText, loadSavedTexts } from './siteTexts';
+import { fetchSiteContent, loadCachedData } from './siteStore';
 
 type Video = {
   id: number;
@@ -53,11 +54,19 @@ export default function VideosPage() {
   const [playing, setPlaying] = useState<Video | null>(null);
 
   const previewId = extractYoutubeId(form.url);
-  const [texts] = useState(loadSavedTexts);
+  const [texts, setTexts] = useState<Record<string, string> | undefined>(
+    () => loadCachedData()?.texts ?? loadSavedTexts()
+  );
   const t = (key: string) => getText(texts, key);
   const title = t('videosTitle');
   const highlight = t('videosTitleHighlight');
   const highlightAt = highlight ? title.indexOf(highlight) : -1;
+
+  useEffect(() => {
+    fetchSiteContent()
+      .then((data) => data?.texts && setTexts(data.texts))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     document.title = '영상 갤러리 | 청송 못난이 사과 축제 2026';
