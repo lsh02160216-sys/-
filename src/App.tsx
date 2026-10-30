@@ -45,7 +45,30 @@ import {
   Mail,
   BellRing
 } from 'lucide-react';
-import { STORAGE_KEY, DEFAULT_TEXTS, TEXT_GROUPS, getText } from './siteTexts';
+import { DEFAULT_TEXTS, TEXT_GROUPS, getText } from './siteTexts';
+import {
+  AuthError,
+  fetchInquiries,
+  fetchSiteContent,
+  getAdminPassword,
+  getUnmigratedLegacyInquiries,
+  loadCachedData,
+  loadLegacyLocalData,
+  mergeWithDefaults,
+  prepareImageFile,
+  saveSiteContent,
+  setAdminPassword,
+  submitInquiry,
+  uploadEmbeddedImages,
+  writeCache,
+} from './siteStore';
+
+// Default photos are referenced as '/src/assets/images/...', which only exists in dev; map them to built asset URLs.
+const BUNDLED_IMAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob('./assets/images/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+  ).map(([path, url]) => [path.replace(/^\.\//, '/src/'), url])
+);
 
 // ==========================================
 // 1. DEFAULT DATA & STORAGE CONSTANTS
@@ -301,6 +324,7 @@ async function submitToFormspree(
 }
 
 function getSafeImageSrc(src?: string): string {
+  if (src && BUNDLED_IMAGES[src]) return BUNDLED_IMAGES[src];
   if (!src) {
     return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%23143022"><rect width="100%" height="100%" fill="%23143022"/><text x="50%" y="50%" fill="%23E2ECC8" font-family="sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle">청송 못난이 사과 🍎</text></svg>';
   }
@@ -313,38 +337,71 @@ function handleImgError(e: React.SyntheticEvent<HTMLImageElement, Event>) {
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%23143022"><rect width="100%" height="100%" fill="%23143022"/><text x="50%" y="45%" fill="%23D92525" font-family="sans-serif" font-size="36" text-anchor="middle">🍎</text><text x="50%" y="60%" fill="%23F4F7EE" font-family="sans-serif" font-size="18" text-anchor="middle">청송 못난이 사과 축제</text></svg>';
 }
 
+function normalizeData(saved: Record<string, any> | null | undefined): typeof DEFAULT_DATA {
+  const merged = mergeWithDefaults(DEFAULT_DATA, saved);
+  if (!merged.formspree.endpoint) merged.formspree.endpoint = DEFAULT_FORMSPREE_ENDPOINT;
+  // Inquiries are private and loaded separately for the admin only
+  merged.inquiries = [];
+  return merged;
+}
+
 // ==========================================
 // 3. MAIN APP COMPONENT
 // ==========================================
 export default function App() {
-  // Load state from localStorage or default
-  const [data, setData] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Ensure formspree endpoint exists
-        if (!parsed.formspree) {
-          parsed.formspree = { ...DEFAULT_DATA.formspree };
-        } else if (!parsed.formspree.endpoint) {
-          parsed.formspree.endpoint = DEFAULT_FORMSPREE_ENDPOINT;
-        }
-        return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to parse saved state:', e);
-    }
-    return DEFAULT_DATA;
-  });
+  // Render the last known content instantly (server cache, else data saved by the old local-only admin)
+  const [data, setData] = useState<typeof DEFAULT_DATA>(() =>
+    normalizeData(loadCachedData() ?? loadLegacyLocalData())
+  );
 
-  // Persistent save helper
-  const saveData = (nextData: typeof DEFAULT_DATA) => {
-    setData(nextData);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
+  // The server copy is shared by every visitor and always wins once loaded
+  useEffect(() => {
+    fetchSiteContent()
+      .then((serverData) => {
+        if (serverData) {
+          setData(normalizeData(serverData));
+          writeCache(serverData);
+        }
+      })
+      .catch((e) => console.error('Failed to load site content:', e));
+  }, []);
+
+  const [adminPassword, setAdminPasswordState] = useState<string | null>(null);
+  const [adminLoginOpen, setAdminLoginOpen] = useState(false);
+  const [adminInquiries, setAdminInquiries] = useState<any[]>([]);
+
+  const openAdmin = async (password: string) => {
+    const serverInquiries = await fetchInquiries(password);
+    const serverIds = new Set(serverInquiries.map((i) => i.id));
+    const legacy = getUnmigratedLegacyInquiries().filter((i) => !serverIds.has(i.id));
+    setAdminPassword(password);
+    setAdminPasswordState(password);
+    setAdminInquiries([...serverInquiries, ...legacy]);
+    setIsAdminOpen(true);
+  };
+
+  const handleAdminButton = async () => {
+    const saved = getAdminPassword();
+    if (saved) {
+      try {
+        await openAdmin(saved);
+        return;
+      } catch (e) {
+        if (!(e instanceof AuthError)) {
+          showToast('⚠️ ' + (e as Error).message);
+          return;
+        }
+        setAdminPassword(null);
+      }
     }
+    setAdminLoginOpen(true);
+  };
+
+  // Records a visitor submission on the server so the admin sees it from any device
+  const recordInquiry = async (inquiry: Record<string, any>) => {
+    const ok = await submitInquiry(inquiry);
+    if (!ok) console.error('Failed to record inquiry on server');
+    return ok;
   };
 
   const t = (key: string) => getText(data.texts, key);
@@ -413,6 +470,21 @@ export default function App() {
     document.title = data.seo?.metaTitle || '청송 못난이 사과 축제 2026';
   }, [data.seo?.metaTitle]);
 
+  useEffect(() => {
+    const setMeta = (name: string, content?: string) => {
+      if (!content) return;
+      let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.name = name;
+        document.head.appendChild(el);
+      }
+      el.content = content;
+    };
+    setMeta('description', data.seo?.metaDescription);
+    setMeta('keywords', data.seo?.metaKeywords);
+  }, [data.seo?.metaDescription, data.seo?.metaKeywords]);
+
   // Handle Contact Us submission with Formspree Integration
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,16 +528,7 @@ export default function App() {
       sentToFormspree: res.success,
     };
 
-    const nextData = {
-      ...data,
-      formspree: {
-        ...data.formspree,
-        submissionCount: (data.formspree?.submissionCount || 0) + 1,
-        lastSubmissionTime: new Date().toLocaleString('ko-KR'),
-      },
-      inquiries: [newInquiry, ...(data.inquiries || [])],
-    };
-    saveData(nextData);
+    await recordInquiry(newInquiry);
     setIsSubmittingContact(false);
 
     setContactForm({
@@ -523,16 +586,7 @@ export default function App() {
       sentToFormspree: res.success,
     };
 
-    const nextData = {
-      ...data,
-      formspree: {
-        ...data.formspree,
-        submissionCount: (data.formspree?.submissionCount || 0) + 1,
-        lastSubmissionTime: new Date().toLocaleString('ko-KR'),
-      },
-      inquiries: [newInquiry, ...(data.inquiries || [])],
-    };
-    saveData(nextData);
+    await recordInquiry(newInquiry);
 
     setIsSubmittingBooking(false);
     setSelectedProgram(null);
@@ -576,16 +630,7 @@ export default function App() {
       sentToFormspree: res.success,
     };
 
-    const nextData = {
-      ...data,
-      formspree: {
-        ...data.formspree,
-        submissionCount: (data.formspree?.submissionCount || 0) + 1,
-        lastSubmissionTime: new Date().toLocaleString('ko-KR'),
-      },
-      inquiries: [newInquiry, ...(data.inquiries || [])],
-    };
-    saveData(nextData);
+    await recordInquiry(newInquiry);
 
     setIsSubmittingEvent(false);
     setEventRegisterOpen(false);
@@ -625,16 +670,7 @@ export default function App() {
       sentToFormspree: res.success,
     };
 
-    const nextData = {
-      ...data,
-      formspree: {
-        ...data.formspree,
-        submissionCount: (data.formspree?.submissionCount || 0) + 1,
-        lastSubmissionTime: new Date().toLocaleString('ko-KR'),
-      },
-      inquiries: [newInquiry, ...(data.inquiries || [])],
-    };
-    saveData(nextData);
+    await recordInquiry(newInquiry);
 
     setIsSubmittingQuickAlert(false);
     setQuickAlertPhone('');
@@ -793,7 +829,7 @@ export default function App() {
 
             {/* Admin Dashboard Toggle Button */}
             <button
-              onClick={() => setIsAdminOpen(true)}
+              onClick={handleAdminButton}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-md transition-all hover:brightness-110 active:scale-95 cursor-pointer"
               style={{ backgroundColor: data.theme?.appleRed || '#D92525' }}
             >
@@ -2124,10 +2160,30 @@ export default function App() {
       {/* ==========================================
           10. 관리자 모드 대시보드 (12 TABS FULLSCREEN MODAL)
          ========================================== */}
-      {isAdminOpen && (
+      {adminLoginOpen && (
+        <AdminLoginModal
+          onLogin={async (pw) => {
+            await openAdmin(pw);
+            setAdminLoginOpen(false);
+          }}
+          onClose={() => setAdminLoginOpen(false)}
+        />
+      )}
+
+      {isAdminOpen && adminPassword && (
         <AdminDashboardModal
           data={data}
-          onSave={saveData}
+          inquiries={adminInquiries}
+          password={adminPassword}
+          onSaved={(saved, savedInquiries) => {
+            setData(normalizeData(saved));
+            setAdminInquiries(savedInquiries);
+          }}
+          onAuthExpired={() => {
+            setAdminPassword(null);
+            setIsAdminOpen(false);
+            setAdminLoginOpen(true);
+          }}
           onClose={() => setIsAdminOpen(false)}
           onShowToast={showToast}
         />
@@ -2473,14 +2529,73 @@ function MiniGameTwoModal({
 // ==========================================
 // 6. ADMIN DASHBOARD MODAL (12 TABS + FORMSPREE MANAGER)
 // ==========================================
+function AdminLoginModal({ onLogin, onClose }: { onLogin: (password: string) => Promise<void>; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onLogin(password);
+    } catch (err) {
+      setError((err as Error).message || '로그인에 실패했습니다.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <form onSubmit={submit} className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold font-serif text-[#143022] flex items-center gap-2">
+            <Settings className="w-5 h-5 text-[#D92525]" />
+            관리자 로그인
+          </h3>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">사이트를 수정하려면 관리자 비밀번호를 입력해주세요.</p>
+        <input
+          type="password"
+          autoFocus
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="관리자 비밀번호"
+          className="w-full p-3 rounded-xl border border-slate-200 text-sm"
+        />
+        {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
+        <button
+          type="submit"
+          disabled={busy || !password}
+          className="w-full py-3 rounded-xl bg-[#D92525] hover:brightness-110 text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {busy && <RefreshCw className="w-4 h-4 animate-spin" />}
+          <span>{busy ? '확인 중...' : '관리자 모드 열기'}</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function AdminDashboardModal({
   data,
-  onSave,
+  inquiries,
+  password,
+  onSaved,
+  onAuthExpired,
   onClose,
   onShowToast,
 }: {
   data: typeof DEFAULT_DATA;
-  onSave: (newData: typeof DEFAULT_DATA) => void;
+  inquiries: any[];
+  password: string;
+  onSaved: (saved: typeof DEFAULT_DATA, inquiries: any[]) => void;
+  onAuthExpired: () => void;
   onClose: () => void;
   onShowToast: (msg: string) => void;
 }) {
@@ -2488,9 +2603,15 @@ function AdminDashboardModal({
   const [formData, setFormData] = useState<typeof DEFAULT_DATA>(() => {
     const copy = JSON.parse(JSON.stringify(data));
     copy.texts = { ...DEFAULT_TEXTS, ...copy.texts };
+    copy.inquiries = JSON.parse(JSON.stringify(inquiries));
     return copy;
   });
   const [isTestingFormspree, setIsTestingFormspree] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  // Snapshot of what is stored on the server, to detect unsaved edits and deleted inquiries
+  const savedSnapshot = useRef(JSON.stringify(formData));
+  const savedInquiryIds = useRef<string[]>(inquiries.map((i) => i.id));
+  const isSaving = saveStatus !== null;
 
   const tabs = [
     { id: 0, label: '히어로 카피', icon: Type },
@@ -2508,16 +2629,53 @@ function AdminDashboardModal({
     { id: 12, label: '사이트 문구 (전체)', icon: Edit3 },
   ];
 
-  const handleSaveAll = () => {
-    onSave(formData);
-    onShowToast('💾 관리자 설정 및 Formspree 연동 정보가 성공적으로 저장되었습니다!');
+  // Success is only reported after the server confirms it stored the exact content
+  const handleSaveAll = async () => {
+    if (isSaving) return;
+    const snapshot = formData;
+    try {
+      setSaveStatus('이미지 확인 중...');
+      const withUrls = await uploadEmbeddedImages(snapshot, password, (done, total) =>
+        setSaveStatus(`이미지 업로드 중 (${done}/${total})...`)
+      );
+      setSaveStatus('서버에 저장 중...');
+      const currentInquiries = withUrls.inquiries || [];
+      const currentIds = new Set(currentInquiries.map((i: any) => i.id));
+      const deletedIds = savedInquiryIds.current.filter((id) => !currentIds.has(id));
+      const saved = await saveSiteContent(withUrls, currentInquiries, deletedIds, password);
+
+      const next = { ...JSON.parse(JSON.stringify(saved)), inquiries: currentInquiries };
+      // Keep edits made while the save was in flight; only swap uploaded image data for URLs
+      setFormData((latest) => (latest === snapshot ? next : latest));
+      savedSnapshot.current = JSON.stringify(next);
+      savedInquiryIds.current = currentInquiries.map((i: any) => i.id);
+      onSaved(saved as typeof DEFAULT_DATA, currentInquiries);
+      onShowToast('💾 모든 변경 사항이 서버에 저장되어 모든 방문자에게 반영되었습니다!');
+    } catch (e) {
+      if (e instanceof AuthError) {
+        onShowToast('⚠️ 관리자 비밀번호가 변경되었거나 올바르지 않습니다. 다시 로그인해주세요.');
+        onAuthExpired();
+        return;
+      }
+      onShowToast('⚠️ 저장 실패: ' + ((e as Error).message || '알 수 없는 오류') + ' (수정 내용은 화면에 그대로 남아 있습니다)');
+    } finally {
+      setSaveStatus(null);
+    }
   };
 
+  const hasUnsavedChanges = () => JSON.stringify(formData) !== savedSnapshot.current;
+
+  const handleClose = () => {
+    if (isSaving) return;
+    if (hasUnsavedChanges() && !confirm('저장하지 않은 변경 사항이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    onClose();
+  };
+
+  // Only fills the form; nothing is overwritten on the server until 저장하기 is pressed
   const handleResetToDefault = () => {
-    if (confirm('정말로 모든 설정을 청송 못난이 사과 축제 초기 데이터로 복원하시겠습니까?')) {
-      setFormData(JSON.parse(JSON.stringify(DEFAULT_DATA)));
-      onSave(DEFAULT_DATA);
-      onShowToast('🔄 초기 기본 데이터로 복원되었습니다.');
+    if (confirm('편집 화면의 모든 설정을 초기 데이터로 되돌리시겠습니까?\n(접수된 문의는 유지되며, [저장하기]를 눌러야 실제 사이트에 반영됩니다.)')) {
+      setFormData({ ...JSON.parse(JSON.stringify(DEFAULT_DATA)), inquiries: formData.inquiries });
+      onShowToast('🔄 초기 데이터를 불러왔습니다. 저장하기를 눌러야 사이트에 반영됩니다.');
     }
   };
 
@@ -2595,13 +2753,15 @@ function AdminDashboardModal({
             </button>
             <button
               onClick={handleSaveAll}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#D92525] hover:brightness-110 text-white font-bold text-xs shadow"
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#D92525] hover:brightness-110 text-white font-bold text-xs shadow disabled:opacity-60 disabled:cursor-wait"
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>저장하기</span>
+              {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>{isSaving ? '저장 중...' : '저장하기'}</span>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
+              disabled={isSaving}
               className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
             >
               <X className="w-5 h-5" />
@@ -3422,13 +3582,13 @@ function AdminDashboardModal({
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                       <span className="text-slate-400 block text-[10px]">수집된 총 제출 건수</span>
                       <strong className="text-sm font-mono text-[#143022]">
-                        {formData.formspree?.submissionCount || 0}건
+                        {formData.inquiries?.length || 0}건
                       </strong>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                       <span className="text-slate-400 block text-[10px]">최근 수집 일시</span>
                       <strong className="text-xs font-mono text-slate-700 truncate block">
-                        {formData.formspree?.lastSubmissionTime || '기록 대기중'}
+                        {formData.inquiries?.[0]?.date || '기록 대기중'}
                       </strong>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200 col-span-2 sm:col-span-1">
@@ -3934,21 +4094,25 @@ function AdminDashboardModal({
         {/* Modal Bottom Save Bar */}
         <div className="px-6 py-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between shrink-0">
           <span className="text-xs text-slate-500">
-            * 변경된 내용은 [저장하기]를 누르면 로컬 저장소({STORAGE_KEY})에 즉시 영구 반영됩니다.
+            {saveStatus
+              ? `⏳ ${saveStatus} 완료될 때까지 창을 닫지 마세요.`
+              : '* [저장하기]를 누르면 모든 변경 사항이 서버에 영구 저장되어 모든 방문자에게 반영됩니다.'}
           </span>
           <div className="flex items-center gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
+              disabled={isSaving}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
             >
               닫기
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-6 py-2.5 rounded-xl bg-[#D92525] hover:brightness-110 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-xl bg-[#D92525] hover:brightness-110 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-wait"
             >
-              <Save className="w-4 h-4" />
-              <span>저장 및 웹사이트 반영</span>
+              {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{isSaving ? '저장 중...' : '저장 및 웹사이트 반영'}</span>
             </button>
           </div>
         </div>
@@ -3970,19 +4134,25 @@ function ImageUploadControl({
   onUpdate: (src: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Always call the latest onUpdate so edits made while the image is processing are not overwritten
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64 = uploadEvent.target?.result as string;
-      if (base64) {
-        onUpdate(base64);
-      }
-    };
-    reader.readAsDataURL(file);
+    setProcessing(true);
+    setError('');
+    try {
+      onUpdateRef.current(await prepareImageFile(file));
+    } catch (err) {
+      setError((err as Error).message || '이미지를 처리하지 못했습니다.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -3992,10 +4162,11 @@ function ImageUploadControl({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#143022] hover:bg-[#1c4330] text-white text-xs font-semibold shadow-sm transition-all"
+          disabled={processing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#143022] hover:bg-[#1c4330] text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-60"
         >
           <Upload className="w-3.5 h-3.5 text-[#E2ECC8]" />
-          <span>내 기기 파일 직접 업로드</span>
+          <span>{processing ? '이미지 처리 중...' : '내 기기 파일 직접 업로드'}</span>
         </button>
         <input
           ref={fileInputRef}
@@ -4019,13 +4190,18 @@ function ImageUploadControl({
         <div className="flex-1">
           <input
             type="text"
-            value={currentSrc || ''}
+            value={currentSrc?.startsWith('data:') ? '' : currentSrc || ''}
             onChange={(e) => onUpdate(e.target.value)}
-            placeholder="이미지 URL을 입력하거나 위 [파일 직접 업로드] 버튼을 클릭하세요."
+            placeholder={
+              currentSrc?.startsWith('data:')
+                ? '✅ 새 이미지 선택됨 — [저장하기]를 누르면 서버에 업로드됩니다.'
+                : '이미지 URL을 입력하거나 위 [파일 직접 업로드] 버튼을 클릭하세요.'
+            }
             className="w-full p-2 rounded-lg border border-slate-200 text-xs font-mono text-slate-600 truncate"
           />
         </div>
       </div>
+      {error && <p className="text-[11px] text-rose-600 font-semibold">⚠️ {error}</p>}
     </div>
   );
 }

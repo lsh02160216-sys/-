@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@netlify/blobs": "^11.1.7",
     "@netlify/database": "^2.0.1",
     "@netlify/functions": "^6.0.3",
     "@tailwindcss/vite": "^4.3.3",
