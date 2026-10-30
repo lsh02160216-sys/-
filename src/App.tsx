@@ -772,6 +772,9 @@ export default function App() {
             >
               문의하기
             </button>
+            <a href="/videos" className="hover:text-white transition-colors cursor-pointer py-1">
+              영상 갤러리
+            </a>
           </nav>
 
           {/* Header Action Buttons */}
@@ -826,6 +829,13 @@ export default function App() {
                 <ChevronRight className="w-4 h-4 text-[#E2ECC8]" />
               </button>
             ))}
+            <a
+              href="/videos"
+              className="w-full text-left py-2.5 px-3 rounded-lg text-sm text-[#F4F7EE] hover:bg-white/10 transition-colors flex items-center justify-between"
+            >
+              <span>영상 갤러리</span>
+              <ChevronRight className="w-4 h-4 text-[#E2ECC8]" />
+            </a>
           </div>
         )}
       </header>
