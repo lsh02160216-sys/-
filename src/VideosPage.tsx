@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Play, Plus, X, Youtube, Link as LinkIcon, AlertCircle, CheckCircle2, Film } from 'lucide-react';
+import { getText, loadSavedTexts } from './siteTexts';
 
 type Video = {
   id: number;
@@ -52,6 +53,11 @@ export default function VideosPage() {
   const [playing, setPlaying] = useState<Video | null>(null);
 
   const previewId = extractYoutubeId(form.url);
+  const [texts] = useState(loadSavedTexts);
+  const t = (key: string) => getText(texts, key);
+  const title = t('videosTitle');
+  const highlight = t('videosTitleHighlight');
+  const highlightAt = highlight ? title.indexOf(highlight) : -1;
 
   useEffect(() => {
     document.title = '영상 갤러리 | 청송 못난이 사과 축제 2026';
@@ -116,7 +122,7 @@ export default function VideosPage() {
               <span className="text-2xl select-none">🍎</span>
             </div>
             <div>
-              <span className="text-xl font-extrabold tracking-tight text-white font-serif">청송 못난이 사과 축제</span>
+              <span className="text-xl font-extrabold tracking-tight text-white font-serif">{t('brandName')}</span>
               <p className="text-xs text-[#E2ECC8]/80 font-light tracking-wide">VIDEO GALLERY</p>
             </div>
           </a>
@@ -125,7 +131,7 @@ export default function VideosPage() {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold text-[#E2ECC8] bg-white/10 hover:bg-white/20 transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">메인으로</span>
+            <span className="hidden sm:inline">{t('videosBack')}</span>
           </a>
         </div>
       </header>
@@ -134,13 +140,21 @@ export default function VideosPage() {
       <section className="bg-[#143022] text-white pb-24 pt-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#E2ECC8] text-[#143022]">
-            <Film className="w-3.5 h-3.5" /> 축제 영상 갤러리
+            <Film className="w-3.5 h-3.5" /> {t('videosBadge')}
           </span>
           <h1 className="mt-5 text-3xl sm:text-5xl font-extrabold font-serif leading-tight">
-            청송의 가을, <span className="text-[#ff6b6b]">영상</span>으로 나눠요
+            {highlightAt >= 0 ? (
+              <>
+                {title.slice(0, highlightAt)}
+                <span className="text-[#ff6b6b]">{highlight}</span>
+                {title.slice(highlightAt + highlight.length)}
+              </>
+            ) : (
+              title
+            )}
           </h1>
           <p className="mt-4 max-w-2xl text-[#F4F7EE]/75 leading-relaxed">
-            축제 현장 브이로그, 사과 수확 체험, 현비암 야경까지! 유튜브 영상 링크를 첨부하면 누구나 함께 볼 수 있는 갤러리에 등록됩니다.
+            {t('videosDesc')}
           </p>
         </div>
       </section>
@@ -153,7 +167,7 @@ export default function VideosPage() {
         >
           <div className="flex items-center gap-2">
             <Youtube className="w-6 h-6 text-[#D92525]" />
-            <h2 className="text-lg font-bold">유튜브 영상 첨부하기</h2>
+            <h2 className="text-lg font-bold">{t('videosFormTitle')}</h2>
           </div>
 
           <div className="aspect-video rounded-2xl overflow-hidden bg-[#E2ECC8]/50 border border-dashed border-[#143022]/20 flex items-center justify-center">
@@ -220,14 +234,14 @@ export default function VideosPage() {
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#D92525] text-white font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition disabled:opacity-60 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            {submitting ? '등록 중...' : '영상 등록하기'}
+            {submitting ? '등록 중...' : t('videosSubmitButton')}
           </button>
         </form>
 
         {/* Gallery */}
         <section className="lg:pt-20">
           <div className="flex items-end justify-between mb-5">
-            <h2 className="text-2xl font-extrabold font-serif">등록된 영상</h2>
+            <h2 className="text-2xl font-extrabold font-serif">{t('videosListTitle')}</h2>
             <span className="text-sm text-black/50">총 {videos.length}개</span>
           </div>
 
@@ -244,8 +258,8 @@ export default function VideosPage() {
           ) : videos.length === 0 ? (
             <div className="rounded-3xl border-2 border-dashed border-[#143022]/15 bg-white/60 p-12 text-center">
               <div className="text-5xl mb-3">🎥</div>
-              <p className="font-semibold">아직 등록된 영상이 없어요</p>
-              <p className="text-sm text-black/50 mt-1">첫 번째 축제 영상을 첨부해주세요!</p>
+              <p className="font-semibold">{t('videosEmptyTitle')}</p>
+              <p className="text-sm text-black/50 mt-1">{t('videosEmptyDesc')}</p>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-6">

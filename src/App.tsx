@@ -45,14 +45,15 @@ import {
   Mail,
   BellRing
 } from 'lucide-react';
+import { STORAGE_KEY, DEFAULT_TEXTS, TEXT_GROUPS, getText } from './siteTexts';
 
 // ==========================================
 // 1. DEFAULT DATA & STORAGE CONSTANTS
 // ==========================================
-const STORAGE_KEY = 'cheongsong_apple_fest_data_v4';
 const DEFAULT_FORMSPREE_ENDPOINT = 'https://formspree.io/f/xoeeljdk';
 
 const DEFAULT_DATA = {
+  texts: { ...DEFAULT_TEXTS },
   theme: {
     forestGreen: '#143022',
     appleRed: '#D92525',
@@ -345,6 +346,8 @@ export default function App() {
       console.error('Failed to save to localStorage:', e);
     }
   };
+
+  const t = (key: string) => getText(data.texts, key);
 
   // UI Modals state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -676,14 +679,14 @@ export default function App() {
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>실시간 방문자 정보 수집 연동 활성화 (Formspree: <strong className="font-mono text-white">xoeeljdk</strong>)</span>
+            <span>{t('topBanner')} (Formspree: <strong className="font-mono text-white">xoeeljdk</strong>)</span>
           </div>
           <button
             onClick={() => setQuickAlertOpen(true)}
             className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-[#D92525] px-2.5 py-0.5 rounded-full hover:brightness-110"
           >
             <BellRing className="w-3 h-3" />
-            <span>사과 수확 알림 받기</span>
+            <span>{t('topAlertButton')}</span>
           </button>
         </div>
       </div>
@@ -713,17 +716,17 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl font-extrabold tracking-tight text-white font-serif">
-                  청송 못난이 사과 축제
+                  {t('brandName')}
                 </span>
                 <span
                   className="px-2 py-0.5 text-[11px] font-bold rounded-md uppercase tracking-wider text-black"
                   style={{ backgroundColor: data.theme?.accentLime || '#E2ECC8' }}
                 >
-                  2026
+                  {t('brandYear')}
                 </span>
               </div>
               <p className="text-xs text-[#E2ECC8]/80 font-light tracking-wide">
-                CHEONGSONG UGLY APPLE FESTIVAL
+                {t('brandSub')}
               </p>
             </div>
           </div>
@@ -734,46 +737,46 @@ export default function App() {
               onClick={() => scrollTo('intro')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              축제 소개
+              {t('navIntro')}
             </button>
             <button
               onClick={() => scrollTo('programs')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              체험 프로그램
+              {t('navPrograms')}
             </button>
             <button
               onClick={() => scrollTo('event')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              시즌 이벤트
+              {t('navEvent')}
             </button>
             <button
               onClick={() => scrollTo('minigames')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              미니게임
+              {t('navGames')}
             </button>
             <button
               onClick={() => scrollTo('characters')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              캐릭터 소개
+              {t('navCharacters')}
             </button>
             <button
               onClick={() => scrollTo('notices')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              공지 & 갤러리
+              {t('navNotices')}
             </button>
             <button
               onClick={() => scrollTo('contact')}
               className="hover:text-white transition-colors cursor-pointer py-1"
             >
-              문의하기
+              {t('navContact')}
             </button>
             <a href="/videos" className="hover:text-white transition-colors cursor-pointer py-1">
-              영상 갤러리
+              {t('navVideos')}
             </a>
           </nav>
 
@@ -795,7 +798,7 @@ export default function App() {
               style={{ backgroundColor: data.theme?.appleRed || '#D92525' }}
             >
               <Settings className="w-4 h-4 animate-spin-slow" />
-              <span>관리자 모드</span>
+              <span>{t('adminButton')}</span>
             </button>
 
             {/* Mobile Hamburger Toggle */}
@@ -812,13 +815,13 @@ export default function App() {
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-white/10 px-4 py-6 bg-[#143022] space-y-3">
             {[
-              { id: 'intro', label: '축제 소개' },
-              { id: 'programs', label: '체험 프로그램' },
-              { id: 'event', label: '시즌 이벤트' },
-              { id: 'minigames', label: '미니게임' },
-              { id: 'characters', label: '캐릭터 소개' },
-              { id: 'notices', label: '공지사항 & 갤러리' },
-              { id: 'contact', label: '문의하기' },
+              { id: 'intro', label: t('navIntro') },
+              { id: 'programs', label: t('navPrograms') },
+              { id: 'event', label: t('navEvent') },
+              { id: 'minigames', label: t('navGames') },
+              { id: 'characters', label: t('navCharacters') },
+              { id: 'notices', label: t('navNotices') },
+              { id: 'contact', label: t('navContact') },
             ].map((item) => (
               <button
                 key={item.id}
@@ -833,7 +836,7 @@ export default function App() {
               href="/videos"
               className="w-full text-left py-2.5 px-3 rounded-lg text-sm text-[#F4F7EE] hover:bg-white/10 transition-colors flex items-center justify-between"
             >
-              <span>영상 갤러리</span>
+              <span>{t('navVideos')}</span>
               <ChevronRight className="w-4 h-4 text-[#E2ECC8]" />
             </a>
           </div>
@@ -887,21 +890,21 @@ export default function App() {
                   style={{ backgroundColor: data.theme?.appleRed || '#D92525' }}
                 >
                   <Sparkles className="w-5 h-5" />
-                  <span>축제 프로그램 둘러보기</span>
+                  <span>{t('heroProgramsButton')}</span>
                 </button>
                 <button
                   onClick={() => setShuttleModalOpen(true)}
                   className="px-6 py-3.5 rounded-xl font-semibold text-sm sm:text-base text-white bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 transition-all active:scale-95 cursor-pointer flex items-center gap-2"
                 >
                   <Bus className="w-5 h-5 text-[#E2ECC8]" />
-                  <span>셔틀버스 & 주차장 안내</span>
+                  <span>{t('heroShuttleButton')}</span>
                 </button>
                 <button
                   onClick={() => setQuickAlertOpen(true)}
                   className="px-5 py-3.5 rounded-xl font-semibold text-xs sm:text-sm text-[#E2ECC8] bg-black/30 hover:bg-black/50 border border-[#E2ECC8]/30 transition-all flex items-center gap-2"
                 >
                   <BellRing className="w-4 h-4 text-[#D92525]" />
-                  <span>꿀사과 수확 알림</span>
+                  <span>{t('alertButton')}</span>
                 </button>
               </div>
 
@@ -925,10 +928,10 @@ export default function App() {
                   <div className="flex items-center gap-2.5">
                     <div className="w-3 h-3 rounded-full bg-[#D92525] animate-ping" />
                     <h3 className="font-bold tracking-tight text-base font-serif text-[#E2ECC8]">
-                      FESTIVAL OVERVIEW
+                      {t('overviewTitle')}
                     </h3>
                   </div>
-                  <span className="text-xs text-white/70 font-mono">LIVE 2026</span>
+                  <span className="text-xs text-white/70 font-mono">{t('overviewTag')}</span>
                 </div>
 
                 {/* 4 Stats Grid */}
@@ -953,10 +956,7 @@ export default function App() {
 
                 <div className="p-4 rounded-2xl bg-[#E2ECC8]/10 border border-[#E2ECC8]/20 text-xs text-[#E2ECC8] leading-relaxed flex items-start gap-3">
                   <Info className="w-4 h-4 text-[#E2ECC8] shrink-0 mt-0.5" />
-                  <p>
-                    못난이 사과는 작은 흠이나 불규칙한 모양 때문에 상품 등급에서 밀려났지만,
-                    풍부한 일조량과 고랭지 일교차로 인해 당도(Brix)는 최상급입니다!
-                  </p>
+                  <p>{t('overviewNote')}</p>
                 </div>
               </div>
             </div>
@@ -971,14 +971,13 @@ export default function App() {
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#D92525]">
             <Sparkles className="w-4 h-4" />
-            <span>FESTIVAL EXPERIENCES</span>
+            <span>{t('programsEyebrow')}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold font-serif tracking-tight text-[#143022]">
-            오감으로 맛보고 즐기는 체험 프로그램
+            {t('programsTitle')}
           </h2>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed break-keep">
-            사과 수확의 기쁨부터 청송백자 물레 빚기, 향긋한 사과 디저트와 와인 테이스팅까지
-            온 가족이 함께 즐길 수 있는 다채로운 체험이 준비되어 있습니다.
+            {t('programsDesc')}
           </p>
         </div>
 
@@ -1032,7 +1031,7 @@ export default function App() {
                   <div className="flex items-center justify-between pt-2">
                     <span className="font-bold text-sm text-[#143022]">{prog.price}</span>
                     <span className="text-xs text-[#D92525] font-semibold group-hover:underline flex items-center">
-                      상세 & 예약 <ChevronRight className="w-3 h-3" />
+                      {t('programsCardButton')} <ChevronRight className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
@@ -1063,7 +1062,7 @@ export default function App() {
               <div className="lg:col-span-7 space-y-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D92525]/10 text-[#D92525] text-xs font-bold">
                   <Award className="w-4 h-4" />
-                  <span>SPECIAL SEASON CONTEST</span>
+                  <span>{t('eventEyebrow')}</span>
                 </div>
 
                 <h3 className="text-2xl sm:text-3xl font-extrabold font-serif text-[#143022]">
@@ -1075,18 +1074,18 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-700 pt-2">
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="font-bold text-[#143022] block mb-1">일시 및 장소</span>
+                    <span className="font-bold text-[#143022] block mb-1">{t('eventDateLabel')}</span>
                     <span>{data.event?.date}</span>
                     <span className="block text-slate-500 text-xs">{data.event?.location}</span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="font-bold text-[#143022] block mb-1">참가 대상</span>
+                    <span className="font-bold text-[#143022] block mb-1">{t('eventTargetLabel')}</span>
                     <span>{data.event?.target}</span>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#F4F7EE] border border-[#E2ECC8] text-xs text-slate-700">
-                  <span className="font-bold text-[#D92525] block mb-1">시상 내역</span>
+                  <span className="font-bold text-[#D92525] block mb-1">{t('eventAwardsLabel')}</span>
                   <p>{data.event?.awards}</p>
                 </div>
 
@@ -1097,7 +1096,7 @@ export default function App() {
                     style={{ backgroundColor: data.theme?.appleRed || '#D92525' }}
                   >
                     <Edit3 className="w-4 h-4" />
-                    <span>대회 사전 참가 신청하기</span>
+                    <span>{t('eventRegisterButton')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1106,7 +1105,7 @@ export default function App() {
                     className="px-5 py-3 rounded-xl font-medium text-sm text-[#143022] bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2"
                   >
                     <Download className="w-4 h-4" />
-                    <span>대회 요강 다운로드</span>
+                    <span>{t('eventDownloadButton')}</span>
                   </button>
                 </div>
               </div>
@@ -1122,13 +1121,13 @@ export default function App() {
         <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#D92525]">
             <Gamepad2 className="w-4 h-4" />
-            <span>INTERACTIVE MINI GAMES</span>
+            <span>{t('gamesEyebrow')}</span>
           </div>
           <h2 className="text-3xl font-extrabold font-serif text-[#143022]">
-            손끝으로 즐기는 축제 미니게임
+            {t('gamesTitle')}
           </h2>
           <p className="text-slate-600 text-sm">
-            스마트폰과 PC에서 누구나 바로 즐길 수 있는 2종의 축제 미니게임을 플레이하고 행운 쿠폰을 획득하세요!
+            {t('gamesDesc')}
           </p>
         </div>
 
@@ -1152,7 +1151,7 @@ export default function App() {
                       className="px-5 py-2.5 rounded-full bg-white text-[#143022] font-bold text-xs flex items-center gap-2 shadow-lg"
                     >
                       <Play className="w-4 h-4 fill-current text-[#D92525]" />
-                      <span>지금 플레이하기</span>
+                      <span>{t('gamesPlayButton')}</span>
                     </button>
                   </div>
                 </div>
@@ -1177,7 +1176,7 @@ export default function App() {
                   style={{ backgroundColor: data.theme?.forestGreen || '#143022' }}
                 >
                   <Play className="w-4 h-4 fill-current text-[#E2ECC8]" />
-                  <span>웹 브라우저 즉시 실행</span>
+                  <span>{t('gamesRunButton')}</span>
                 </button>
                 <a
                   href={game.url}
@@ -1206,13 +1205,13 @@ export default function App() {
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#E2ECC8]">
               <Sparkles className="w-4 h-4" />
-              <span>OFFICIAL MASCOTS</span>
+              <span>{t('charactersEyebrow')}</span>
             </div>
             <h2 className="text-3xl font-extrabold font-serif text-white">
-              청송 못난이 사과 요정 '청이'와 '송이'
+              {t('charactersTitle')}
             </h2>
             <p className="text-[#E2ECC8]/80 text-sm">
-              울퉁불퉁한 모습도 사랑스러운 청송의 공식 수호 요정 듀오를 만나보세요!
+              {t('charactersDesc')}
             </p>
           </div>
 
@@ -1260,10 +1259,10 @@ export default function App() {
             <div>
               <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#D92525]">
                 <Info className="w-4 h-4" />
-                <span>NOTICES & NEWS</span>
+                <span>{t('noticesEyebrow')}</span>
               </div>
               <h2 className="text-3xl font-extrabold font-serif text-[#143022]">
-                축제 공지사항 & 알림마당
+                {t('noticesTitle')}
               </h2>
             </div>
             <span className="text-xs text-slate-500 font-mono">
@@ -1282,7 +1281,7 @@ export default function App() {
                   <div className="flex items-center gap-2 text-xs">
                     {n.pinned && (
                       <span className="px-2 py-0.5 rounded bg-[#D92525] text-white font-bold text-[10px]">
-                        중요공지
+                        {t('noticesPinned')}
                       </span>
                     )}
                     <span className="text-slate-500 font-semibold">{n.category}</span>
@@ -1305,13 +1304,13 @@ export default function App() {
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#D92525]">
               <ImageIcon className="w-4 h-4" />
-              <span>PHOTO MOMENTS</span>
+              <span>{t('galleryEyebrow')}</span>
             </div>
             <h2 className="text-3xl font-extrabold font-serif text-[#143022]">
-              청송 축제 현장 포토 갤러리
+              {t('galleryTitle')}
             </h2>
             <p className="text-slate-600 text-sm">
-              가을 정취 가득한 주왕산과 현비암, 행복한 미소가 가득했던 지난 축제의 하이라이트
+              {t('galleryDesc')}
             </p>
           </div>
 
@@ -1352,14 +1351,13 @@ export default function App() {
             <div className="lg:col-span-5 space-y-6">
               <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#D92525]">
                 <MessageSquare className="w-4 h-4" />
-                <span>CONTACT & FORMSPREE COLLECTOR</span>
+                <span>{t('contactEyebrow')}</span>
               </div>
               <h2 className="text-3xl font-extrabold font-serif text-[#143022]">
-                축제 문의 및 온라인 소통
+                {t('contactTitle')}
               </h2>
               <p className="text-slate-600 text-sm leading-relaxed">
-                청송 못난이 사과 축제에 대해 궁금한 점이나 단체 수확 체험, 휠체어/유모차 대여 등
-                필요하신 내용을 남겨주시면 축제 운영위원회에서 친절하게 답변드립니다.
+                {t('contactDesc')}
               </p>
 
               {/* Formspree Connection Card */}
@@ -1367,7 +1365,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[#143022] flex items-center gap-1.5">
                     <CheckCheck className="w-4 h-4 text-emerald-600" />
-                    <span>실시간 수집 연동 (Formspree)</span>
+                    <span>{t('contactLiveLabel')}</span>
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-100 text-emerald-800 font-bold">
                     ONLINE
@@ -1382,12 +1380,12 @@ export default function App() {
                 <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <Phone className="w-5 h-5 text-[#D92525] shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-[#143022] block">축제 종합 상황실 전화</span>
+                    <span className="font-bold text-[#143022] block">{t('contactPhoneLabel')}</span>
                     <span className="text-base font-extrabold text-[#D92525] font-mono">
                       {data.footer?.phone || '054-870-6205'}
                     </span>
                     <span className="block text-xs text-slate-400 mt-0.5">
-                      (평일/주말 09:00 - 18:00 축제기간 상시 운영)
+                      {t('contactPhoneHours')}
                     </span>
                   </div>
                 </div>
@@ -1395,7 +1393,7 @@ export default function App() {
                 <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <MapPin className="w-5 h-5 text-[#D92525] shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-[#143022] block">축제장 및 사무국 주소</span>
+                    <span className="font-bold text-[#143022] block">{t('contactAddressLabel')}</span>
                     <span>{data.footer?.address}</span>
                   </div>
                 </div>
@@ -1407,7 +1405,7 @@ export default function App() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold font-serif text-[#143022] flex items-center gap-2">
                   <Send className="w-4 h-4 text-[#D92525]" />
-                  <span>온라인 문의 작성</span>
+                  <span>{t('contactFormTitle')}</span>
                 </h3>
                 <span className="text-[11px] text-slate-500 font-mono">
                   Formspree 자동 연동
@@ -1504,7 +1502,7 @@ export default function App() {
                   ) : (
                     <>
                       <Send className="w-4 h-4 text-[#E2ECC8]" />
-                      <span>문의 작성 완료 및 Formspree 전송</span>
+                      <span>{t('contactSubmitButton')}</span>
                     </>
                   )}
                 </button>
@@ -1526,7 +1524,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">🍎</span>
               <div>
-                <h3 className="text-lg font-bold font-serif text-white">청송 못난이 사과 축제</h3>
+                <h3 className="text-lg font-bold font-serif text-white">{t('footerTitle')}</h3>
                 <p className="text-xs text-[#E2ECC8]/80">{data.footer?.organizer}</p>
               </div>
             </div>
@@ -1538,7 +1536,7 @@ export default function App() {
                 className="px-3 py-1.5 rounded-lg bg-[#D92525] hover:brightness-110 text-white font-bold transition-all flex items-center gap-1.5"
               >
                 <BellRing className="w-3.5 h-3.5" />
-                <span>꿀사과 수확 알림</span>
+                <span>{t('alertButton')}</span>
               </button>
               <button
                 onClick={() => showToast('📸 청송사과축제 인스타그램 공식 계정으로 연결됩니다.')}
@@ -1732,7 +1730,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-[#D92525]" />
                 <h3 className="text-lg font-bold font-serif text-[#143022]">
-                  그림 그리기 대회 사전 참가 신청
+                  {t('eventModalTitle')}
                 </h3>
               </div>
               <button
@@ -1821,7 +1819,7 @@ export default function App() {
               </div>
 
               <p className="text-[11px] text-slate-400">
-                * 참가자 전원에게 8색 크레파스 및 꿀사과 1박스 기념품이 현장 지급됩니다.
+                {t('eventModalNote')}
               </p>
 
               <div className="flex gap-3 pt-2">
@@ -1864,10 +1862,10 @@ export default function App() {
             </div>
             <div>
               <h3 className="text-lg font-bold font-serif text-[#143022]">
-                꿀사과 수확 & 산지직판 알림
+                {t('alertModalTitle')}
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                청송 고랭지 당도 15Brix 이상 특등급 못난이 사과 수확 당일 산지 직배송 특가 알림을 문자로 보내드립니다!
+                {t('alertModalDesc')}
               </p>
             </div>
 
@@ -1957,7 +1955,7 @@ export default function App() {
               onClick={() => setSelectedNotice(null)}
               className="w-full py-3 rounded-xl bg-[#143022] text-white font-bold text-sm shadow hover:brightness-110"
             >
-              확인 완료
+              {t('noticeConfirmButton')}
             </button>
           </div>
         </div>
@@ -2004,9 +2002,9 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold font-serif text-[#143022]">
-                    셔틀버스 & 주차장 안내
+                    {t('shuttleTitle')}
                   </h3>
-                  <p className="text-xs text-slate-500">축제 기간 전 구간 무료 순환 운행</p>
+                  <p className="text-xs text-slate-500">{t('shuttleSubtitle')}</p>
                 </div>
               </div>
               <button
@@ -2019,22 +2017,36 @@ export default function App() {
 
             <div className="space-y-4 text-xs sm:text-sm text-slate-700">
               <div className="p-4 rounded-2xl bg-[#F4F7EE] border border-[#E2ECC8] space-y-2">
-                <span className="font-bold text-[#143022] block">🚗 임시 무료 주차장 4개소</span>
+                <span className="font-bold text-[#143022] block">{t('shuttleParkingTitle')}</span>
                 <ul className="space-y-1 text-slate-600 pl-4 list-disc">
-                  <li><strong>A주차장 (메인):</strong> 청송공설운동장 (1,200대 수용)</li>
-                  <li><strong>B주차장:</strong> 용전천 수변체육공원 하류 (800대 수용)</li>
-                  <li><strong>C주차장:</strong> 청송군청 및 군민회관 뒤편 (500대 수용)</li>
-                  <li><strong>D주차장:</strong> 주왕산 입구 대형버스 전용 주차장 (300대 수용)</li>
+                  {t('shuttleParking')
+                    .split('\n')
+                    .filter((line) => line.trim())
+                    .map((line, i) => {
+                      const sep = line.indexOf(':');
+                      return (
+                        <li key={i}>
+                          {sep > 0 ? (
+                            <>
+                              <strong>{line.slice(0, sep + 1)}</strong>
+                              {line.slice(sep + 1)}
+                            </>
+                          ) : (
+                            line
+                          )}
+                        </li>
+                      );
+                    })}
                 </ul>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="font-bold text-[#143022] block">🚌 무료 순환 셔틀버스 운행표</span>
+                <span className="font-bold text-[#143022] block">{t('shuttleBusTitle')}</span>
                 <p className="text-slate-600">
-                  <strong>운행 시간:</strong> 축제 기간 매일 09:30 - 20:30 (배차 간격 10~15분)
+                  <strong>운행 시간:</strong> {t('shuttleHours')}
                 </p>
                 <p className="text-slate-600">
-                  <strong>순환 노선:</strong> A주차장 ↔ B주차장 ↔ 축제장 메인게이트 (현비암 앞) ↔ C주차장
+                  <strong>순환 노선:</strong> {t('shuttleRoute')}
                 </p>
               </div>
             </div>
@@ -2473,7 +2485,11 @@ function AdminDashboardModal({
   onShowToast: (msg: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [formData, setFormData] = useState<typeof DEFAULT_DATA>(JSON.parse(JSON.stringify(data)));
+  const [formData, setFormData] = useState<typeof DEFAULT_DATA>(() => {
+    const copy = JSON.parse(JSON.stringify(data));
+    copy.texts = { ...DEFAULT_TEXTS, ...copy.texts };
+    return copy;
+  });
   const [isTestingFormspree, setIsTestingFormspree] = useState(false);
 
   const tabs = [
@@ -2489,6 +2505,7 @@ function AdminDashboardModal({
     { id: 9, label: '푸터 정보', icon: Phone },
     { id: 10, label: '디자인 & 색상', icon: Palette },
     { id: 11, label: 'SEO 메타', icon: Globe },
+    { id: 12, label: '사이트 문구 (전체)', icon: Edit3 },
   ];
 
   const handleSaveAll = () => {
@@ -2618,6 +2635,59 @@ function AdminDashboardModal({
 
           {/* Active Tab Panel Content */}
           <div className="flex-1 p-6 overflow-y-auto bg-white">
+            {/* TAB 12: 사이트 문구 (전체) */}
+            {activeTab === 12 && (
+              <div className="max-w-3xl space-y-8">
+                <div className="pb-2 border-b border-slate-100">
+                  <h3 className="text-lg font-bold font-serif text-[#143022]">사이트 전체 고정 문구</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    메뉴, 섹션 제목·설명, 버튼, 팝업, 영상 갤러리 페이지의 문구를 수정합니다. 수정 후 상단의 저장하기를 눌러주세요.
+                  </p>
+                </div>
+                {TEXT_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-3">
+                    <h4 className="text-sm font-bold text-[#D92525]">{group.title}</h4>
+                    {group.fields.map((field) => {
+                      const value = formData.texts?.[field.key] ?? field.defaultValue;
+                      const update = (v: string) =>
+                        setFormData({ ...formData, texts: { ...formData.texts, [field.key]: v } });
+                      return (
+                        <div key={field.key}>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-bold text-slate-700">{field.label}</label>
+                            {value !== field.defaultValue && (
+                              <button
+                                type="button"
+                                onClick={() => update(field.defaultValue)}
+                                className="text-[11px] text-slate-400 hover:text-[#D92525]"
+                              >
+                                기본값으로
+                              </button>
+                            )}
+                          </div>
+                          {field.multiline ? (
+                            <textarea
+                              rows={3}
+                              value={value}
+                              onChange={(e) => update(e.target.value)}
+                              className="w-full p-2.5 rounded-xl border border-slate-200 text-sm"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => update(e.target.value)}
+                              className="w-full p-2.5 rounded-xl border border-slate-200 text-sm"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* TAB 0: 히어로 카피 */}
             {activeTab === 0 && (
               <div className="max-w-3xl space-y-5">
